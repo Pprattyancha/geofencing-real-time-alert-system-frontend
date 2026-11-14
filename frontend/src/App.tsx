@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Activity, Bell, Boxes, CarFront, Check, ChevronDown, CircleAlert, Clock3, Crosshair, LayoutDashboard, MapPinned, Plus, Radio, RefreshCw, ShieldCheck, Wifi, WifiOff, X } from 'lucide-react'
-import { api, ALERTS_WS_URL } from './api'
+import { api, WS_BASE_URL } from './api'
 import type { AlertRule, Coordinate, Geofence, LiveAlert, Vehicle, Violation } from './types'
 import MapView from './components/MapView'
 
@@ -52,7 +52,7 @@ export default function App() {
       if (!active) return;
 
       try {
-        socket = new WebSocket(ALERTS_WS_URL);
+        socket = new WebSocket(WS_BASE_URL);
 
         socket.onopen = () => {
           if (!active) {
@@ -60,7 +60,7 @@ export default function App() {
             return;
           }
 
-          console.log("WebSocket connected:", ALERTS_WS_URL);
+          console.log("WebSocket connected:", WS_BASE_URL);
           setConnected(true);
         };
 
