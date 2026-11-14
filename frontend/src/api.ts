@@ -1,113 +1,117 @@
 
-import type {
-  AlertRule,
-  Geofence,
-  Vehicle,
-  Violation,
-} from './types'
+import type { AlertRule, Geofence, Vehicle, Violation } from "./types";
 
-const DEFAULT_API_URL = 'http://localhost:8080'
+// Environment configuration
+const API_URL = import.meta.env.VITE_API_URL;
+const WS_URL = import.meta.env.VITE_WS_URL;
 
-export const API_URL = (
-  import.meta.env.VITE_API_URL || DEFAULT_API_URL
-).replace(/\/+$/, '')
+// API base URL
+export const API_BASE_URL = (
+  API_URL || "http://localhost:8080"
+).replace(/\/$/, "");
 
-export const WS_URL =
-  API_URL.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:') +
-  '/ws/alerts'
+// WebSocket base URL
+export const WS_BASE_URL = (
+  WS_URL || API_BASE_URL.replace(/^http/, "ws")
+).replace(/\/$/, "");
 
+// Alerts WebSocket endpoint
+export const ALERTS_WS_URL = `${WS_BASE_URL}/ws/alerts`;
+
+// Generic API request
 async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const headers = new Headers(options.headers)
+  const headers = new Headers(options.headers);
 
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json')
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
-  })
+  });
 
-  const data: unknown = await response.json().catch(() => null)
+  const data: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
     const message =
       data &&
-      typeof data === 'object' &&
-      'error' in data &&
-      typeof data.error === 'string'
+      typeof data === "object" &&
+      "error" in data &&
+      typeof data.error === "string"
         ? data.error
-        : `Request failed (${response.status})`
+        : `Request failed (${response.status})`;
 
-    throw new Error(message)
+    throw new Error(message);
   }
 
-  return data as T
+  return data as T;
 }
 
+// POST helper
 const post = (path: string, body: unknown) =>
   request(path, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(body),
-  })
+  });
 
+// API methods
 export const api = {
-  health: () =>
-    request<{ status: string }>('/health'),
+  health: () => request<{ status: string }>("/health"),
 
-  geofences: (category = '') =>
+  geofences: (category = "") =>
     request<{ geofences: Geofence[] }>(
       `/geofences${
-        category ? `?category=${encodeURIComponent(category)}` : ''
+        category ? `?category=${encodeURIComponent(category)}` : ""
       }`,
     ),
 
-  createGeofence: (body: Omit<Geofence, 'id'>) =>
-    post('/geofences', body),
+  createGeofence: (body: Omit<Geofence, "id">) =>
+    post("/geofences", body),
 
   vehicles: () =>
-    request<{ vehicles: Vehicle[] }>('/vehicles'),
+    request<{ vehicles: Vehicle[] }>("/vehicles"),
 
-  createVehicle: (body: Omit<Vehicle, 'id' | 'status'>) =>
-    post('/vehicles', body),
+  createVehicle: (body: Omit<Vehicle, "id" | "status">) =>
+    post("/vehicles", body),
 
   updateLocation: (body: {
-    vehicle_id: string
-    latitude: number
-    longitude: number
-    timestamp: string
-  }) => post('/vehicles/location', body),
+    vehicle_id: string;
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+  }) => post("/vehicles/location", body),
 
   configureAlert: (body: {
-    geofence_id: string
-    vehicle_id?: string
-    event_type: string
-  }) => post('/alerts/configure', body),
+    geofence_id: string;
+    vehicle_id?: string;
+    event_type: string;
+  }) => post("/alerts/configure", body),
 
   alerts: () =>
-    request<{ alerts: AlertRule[] }>('/alerts'),
+    request<{ alerts: AlertRule[] }>("/alerts"),
 
   history: (
     filters: {
-      vehicle_id?: string
-      geofence_id?: string
-      limit?: number
+      vehicle_id?: string;
+      geofence_id?: string;
+      limit?: number;
     } = {},
   ) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams();
 
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.set(key, String(value))
+      if (value !== undefined && value !== null && value !== "") {
+        params.set(key, String(value));
       }
-    })
+    });
 
     return request<{
-      violations: Violation[]
-      total_count: number
-    }>(`/violations/history?${params.toString()}`)
+      violations: Violation[];
+      total_count: number;
+    }>(`/violations/history?${params.toString()}`);
   },
-}
+};
