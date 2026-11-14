@@ -1,22 +1,22 @@
 
 import type { AlertRule, Geofence, Vehicle, Violation } from "./types";
 
-// Environment configuration
+
 const API_URL = import.meta.env.VITE_API_URL;
-const WS_URL = import.meta.env.VITE_WS_URL;
+const WS_URL = import.meta.env.VITE_WS_URL || "wss://geofencing-real-time-alert-system-7frd.onrender.com/ws/alerts";
 
-// API base URL
-export const API_BASE_URL = (
-  API_URL || "http://localhost:8080"
-).replace(/\/$/, "");
+if (!API_URL) {
+  throw new Error("VITE_API_URL is not configured");
+}
 
-// WebSocket base URL
-export const WS_BASE_URL = (
-  WS_URL || API_BASE_URL.replace(/^http/, "ws")
-).replace(/\/$/, "");
+if (!WS_URL) {
+  throw new Error("VITE_WS_URL is not configured");
+}
 
-// Alerts WebSocket endpoint
-export const ALERTS_WS_URL = `${WS_BASE_URL}/ws/alerts`;
+export const API_BASE_URL = API_URL.replace(/\/+$/, "");
+
+export const ALERTS_WS_URL = WS_URL;
+
 
 // Generic API request
 async function request<T>(

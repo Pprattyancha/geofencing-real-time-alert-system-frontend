@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Activity, Bell, Boxes, CarFront, Check, ChevronDown, CircleAlert, Clock3, Crosshair, LayoutDashboard, MapPinned, Plus, Radio, RefreshCw, ShieldCheck, Wifi, WifiOff, X } from 'lucide-react'
-import { api, WS_BASE_URL } from './api'
+import { api, ALERTS_WS_URL } from './api'
 import type { AlertRule, Coordinate, Geofence, LiveAlert, Vehicle, Violation } from './types'
 import MapView from './components/MapView'
 
@@ -42,17 +42,89 @@ export default function App() {
     finally { setBusy(false) }
   }, [])
   useEffect(() => { void refresh() }, [refresh])
+
   useEffect(() => {
-    let socket: WebSocket | undefined, retry: number | undefined, active = true
+    let socket: WebSocket | null = null;
+    let retry: number | undefined;
+    let active = true;
+
     const connect = () => {
-      if (!active) return; socket = new WebSocket(WS_BASE_URL)
-      socket.onopen = () => setConnected(true)
-      socket.onmessage = (event) => { try { const alert = JSON.parse(event.data) as LiveAlert; setLive(old => [alert, ...old].slice(0, 30)); setNotice(`${alert.event_type.toUpperCase()} · ${alert.vehicle?.vehicle_number || 'Vehicle'} · ${alert.geofence?.geofence_name || 'Geofence'}`); void refresh() } catch { /* ignore malformed event */ } }
-      socket.onclose = () => { setConnected(false); if (active) retry = window.setTimeout(connect, 3000) }
-      socket.onerror = () => socket?.close()
-    }; connect()
-    return () => { active = false; if (retry) window.clearTimeout(retry); socket?.close() }
-  }, [refresh])
+      if (!active) return;
+
+      try {
+        socket = new WebSocket(ALERTS_WS_URL);
+
+        socket.onopen = () => {
+          if (!active) {
+            socket?.close();
+            return;
+          }
+
+          console.log("WebSocket connected:", ALERTS_WS_URL);
+          setConnected(true);
+        };
+
+        socket.onmessage = (event: MessageEvent) => {
+          if (!active) return;
+
+          try {
+            const alert = JSON.parse(event.data) as LiveAlert;
+
+            setLive((old) => [alert, ...old].slice(0, 30));
+
+            setNotice(
+              `${alert.event_type.toUpperCase()} · ${alert.vehicle?.vehicle_number || "Vehicle"
+              } · ${alert.geofence?.geofence_name || "Geofence"}`
+            );
+
+            void refresh();
+          } catch (error) {
+            console.error("Invalid WebSocket message:", error);
+          }
+        };
+
+        socket.onerror = (error) => {
+          console.error("WebSocket connection error:", error);
+          socket?.close();
+        };
+
+        socket.onclose = (event) => {
+          setConnected(false);
+
+          console.warn(
+            "WebSocket disconnected:",
+            event.code,
+            event.reason
+          );
+
+          if (active) {
+            retry = window.setTimeout(connect, 3000);
+          }
+        };
+      } catch (error) {
+        console.error("WebSocket initialization failed:", error);
+        setConnected(false);
+
+        if (active) {
+          retry = window.setTimeout(connect, 3000);
+        }
+      }
+    };
+
+    connect();
+
+    return () => {
+      active = false;
+
+      if (retry !== undefined) {
+        window.clearTimeout(retry);
+      }
+
+      socket?.close();
+      setConnected(false);
+    };
+  }, [refresh]);
+
   useEffect(() => { if (!notice) return; const id = window.setTimeout(() => setNotice(''), 4500); return () => window.clearTimeout(id) }, [notice])
 
   const restrictedCount = geofences.filter(g => g.category === 'restricted_zone').length
