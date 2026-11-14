@@ -1,6 +1,4 @@
-
 import type { AlertRule, Geofence, Vehicle, Violation } from "./types";
-
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -8,20 +6,20 @@ const API_URL =
 
 const WS_URL =
   import.meta.env.VITE_WS_URL ||
-  API_URL.replace(/^https:/, "wss:").replace(/^http:/, "ws:") +
-    "/ws/alerts";
+  API_URL.replace(/^https:/, "wss:").replace(/^http:/, "ws:") + "/ws/alerts";
 
-export const API_BASE_URL = API_URL.replace(/\/+$/, "");
+// export const API_BASE_URL = API_URL.replace(/\/+$/, "");
 
-export const WS_BASE_URL = WS_URL;
+// export const WS_BASE_URL = WS_URL;
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8080"
+).replace(/\/+$/, "");
 
-
+export const WS_BASE_URL =
+  import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws/alerts";
 
 // Generic API request
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
 
   if (options.body && !headers.has("Content-Type")) {
@@ -68,11 +66,9 @@ export const api = {
       }`,
     ),
 
-  createGeofence: (body: Omit<Geofence, "id">) =>
-    post("/geofences", body),
+  createGeofence: (body: Omit<Geofence, "id">) => post("/geofences", body),
 
-  vehicles: () =>
-    request<{ vehicles: Vehicle[] }>("/vehicles"),
+  vehicles: () => request<{ vehicles: Vehicle[] }>("/vehicles"),
 
   createVehicle: (body: Omit<Vehicle, "id" | "status">) =>
     post("/vehicles", body),
@@ -90,8 +86,7 @@ export const api = {
     event_type: string;
   }) => post("/alerts/configure", body),
 
-  alerts: () =>
-    request<{ alerts: AlertRule[] }>("/alerts"),
+  alerts: () => request<{ alerts: AlertRule[] }>("/alerts"),
 
   history: (
     filters: {
